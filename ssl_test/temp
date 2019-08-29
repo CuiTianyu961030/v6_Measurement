@@ -1,0 +1,5 @@
+g++  -c -Wall -g -fPIC  -D_GNU_SOURCE -D_BSD_SOURCE=1 -D__BSD_SOURCE=1 -D__USE_MISC=1 -D__FAVOR_BSD=1 -I./inc ssl_capture.cpp
+g++  -c -Wall -g -fPIC  -D_GNU_SOURCE -D_BSD_SOURCE=1 -D__BSD_SOURCE=1 -D__USE_MISC=1 -D__FAVOR_BSD=1 -I./inc log_writer.cpp
+g++  -c -Wall -g -fPIC  -D_GNU_SOURCE -D_BSD_SOURCE=1 -D__BSD_SOURCE=1 -D__USE_MISC=1 -D__FAVOR_BSD=1 -I./inc recorder.cpp
+g++  -c -Wall -g -fPIC  -D_GNU_SOURCE -D_BSD_SOURCE=1 -D__BSD_SOURCE=1 -D__USE_MISC=1 -D__FAVOR_BSD=1 -I./inc GetFileSHA1.cpp
+g++  -o ssl_capture.so ssl_capture.o  log_writer.o recorder.o  GetFileSHA1.o -L ./lib/ -lMESA_handle_logger    -shared

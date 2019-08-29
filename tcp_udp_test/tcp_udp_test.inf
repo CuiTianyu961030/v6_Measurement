@@ -1,0 +1,16 @@
+[PLUGINFO]
+PLUGNAME=tcp_udp_demo
+SO_PATH=./plug/business/tcp_udp_test/tcp_udp_test.so
+INIT_FUNC=tcp_udp_demo_init
+DESTROY_FUNC=tcp_udp_demo_destroy
+
+
+[TCP]
+FUNC_FLAG=ALL
+FUNC_NAME=tcp_entry
+
+[UDP]
+FUNC_FLAG=ALL
+FUNC_NAME=udp_entry
+
+

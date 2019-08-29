@@ -1,0 +1,1 @@
+g++ -shared -g -O2 -Wall -fPIC ssl_capture.cpp   -o ssl_capture.so -I/usr/include/MESA/ -I../inc/ ../lib/project_exchange.a

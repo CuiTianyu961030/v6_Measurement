@@ -1,0 +1,12 @@
+[PLUGINFO]
+PLUGNAME=ip_demo
+SO_PATH=./plug/business/ip_test/ip_test.so
+INIT_FUNC=ip_demo_init
+DESTROY_FUNC=ip_demo_destroy
+
+
+[IPV6]
+FUNC_FLAG=ALL
+FUNC_NAME=IPv6_ENTRY
+
+

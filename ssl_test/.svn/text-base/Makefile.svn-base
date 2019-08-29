@@ -1,0 +1,23 @@
+
+CFLAGS 			= -g -O2 -Wall -fPIC
+CC				= gcc
+CCC				= g++
+INCLUDES		= -I/usr/include/MESA/ -I../inc/
+#LIBPATH		= -L./lib/
+LIBPATH			= 
+SUPPORTLIB      =
+SRC             = ssl_capture.cpp
+TARGET			= ssl_capture.so
+
+all:$(TARGET)
+
+$(TARGET):$(SRC)
+	
+	$(CCC) -shared $(CFLAGS) $^ $(LIBPATH) $(SUPPORTLIB) -o $@ ${INCLUDES} ../lib/project_exchange.a
+
+clean:
+	rm -rf *.o *.so
+
+mail_watcher.o:
+	$(CCC) -c ${CFLAGS} -o $@ $< $(INCLUDES)
+

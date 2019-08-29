@@ -1,0 +1,154 @@
+/*
+   zenglingwu
+   20150910
+   */
+
+#define ENABLE_DEBUG_PRINT
+#define ENABLE_INFO_PRINT
+
+#define DEFAULT_BUFFER_LEN 512
+#define MAX_BUFFER_LEN 65535
+#define DATA_QUEUE_LEN 16000
+#define DATA_PATH_LEN 256
+#define DATA_FILENAME_LEN DATA_PATH_LEN + 16
+
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <pthread.h>
+#include <unistd.h>
+#include <MESA/stream.h>
+#include <MESA/MESA_prof_load.h>
+#include <MESA/MESA_list_queue.h>
+#include <MESA/ssl.h>
+#include "ssl_capture.h"
+#include "project_exchange.h"
+
+#define _SSL_V3_VERSION 0x300
+#define _TLS_V1DOT0_VERSION 0x301
+#define _TLS_V1DOT1_VERSION 0x302
+#define _TLS_V1DOT2_VERSION 0x303
+
+
+#define RESOURCE_NAME "SSL_INFO"
+#define MAX_STR_LEN (300)
+#define MAX_SINGLE_STR_LEN 255
+extern time_t g_CurrentTime;
+
+int g_register_id ;
+unsigned int g_from_len,g_to_len,g_cc_len;
+unsigned int max_str_len;
+//only free data pointer
+char SSL_CAPTURE_ENTRY(stSessionInfo* session_info,  void **pme, int thread_seq,struct streaminfo *a_stream,void *a_packet)
+{
+
+    // printf("\nssl\n");
+    if(  session_info->prot_flag!=SSL_CLIENT_HELLO)//直到得到client hello才处理
+    {
+        return PROT_STATE_GIVEME;
+    }
+
+    //得到client hello
+    ssl_stream *ssl=(ssl_stream *)session_info->app_info;
+    UINT64 response_delay=0;
+    if(ssl==NULL ||  ssl->stClientHello ==NULL)//获取应用层信息失败
+    {
+        return PROT_STATE_GIVEME;
+    }
+    st_client_hello_t * client_hello=ssl->stClientHello;
+
+    char version[5][8]={"sslv3","tls1.0","tls1.1","tls1.2","unknown"};
+    int version_index=4;
+    switch (client_hello->client_ver)
+    {
+        case  _SSL_V3_VERSION:
+            version_index=0;
+            break;
+        case _TLS_V1DOT0_VERSION:
+            version_index=1;
+            break;
+        case _TLS_V1DOT1_VERSION:
+            version_index=2;
+            break;
+        case _TLS_V1DOT2_VERSION:
+            version_index=3;
+            break;
+        default:
+            version_index=4;
+            break;
+    }
+
+    char *json_buf=(char *)calloc(MAX_STR_LEN,sizeof(char));
+    if(json_buf==NULL) return PROT_STATE_DROPME;
+    //计算响应延时
+    response_delay=((struct tcpdetail *)(a_stream->ptcpdetail))->lastmtime-((struct tcpdetail *)(a_stream->ptcpdetail))->createtime;
+
+    unsigned int len=0;
+    int cut_len=0;
+    while(client_hello->server_name[len]!=0 && len<512) len++;//计算主机名长度，协议层中设置SSL主机名长度最大为512
+    if(len==0)//不存在主机名,只打印版本号
+    {
+        snprintf(json_buf,MAX_STR_LEN,"\"version\":\"%s\"",version[version_index]);
+        //  return PROT_STATE_DROPME;
+    }
+    else
+    {
+        cut_len=(len>MAX_SINGLE_STR_LEN)?(len-MAX_SINGLE_STR_LEN):0;//截断长度,从前截断
+        snprintf(json_buf,MAX_STR_LEN,"\"version\":\"%s\",\"host_length\":%u,\"host\":\"%s\"",\
+                version[version_index],len-cut_len,client_hello->server_name+cut_len);
+    }
+
+    // */
+
+    // printf("%x\n",client_hello->client_ver);
+
+
+    /*
+       snprintf(json_buf,MAX_STR_LEN,"\"type\":\"ssl\",\"version\":%u,\"host_name_length\":0,\"host_name\":\"\",\"response_delay\":%lld",\
+       client_hello->client_ver,response_delay);
+       */
+    int json_buf_len=strlen_safe(json_buf,MAX_STR_LEN);
+    if(json_buf_len ==-1)
+    {
+        free(json_buf);
+        json_buf=NULL;
+    }
+#ifdef DEBUG_PRINT 
+    printf("\n%s\n",json_buf);
+#endif
+    ssl_resource *str_m =(ssl_resource *)calloc(1,sizeof(ssl_resource));
+    if(str_m==NULL)//申请内存失败
+    {
+        free(json_buf);
+        json_buf=NULL;
+        return PROT_STATE_DROPME;
+    }
+    str_m->json_info_string=json_buf;
+    str_m->len=json_buf_len;
+    str_m->type=SSL_TYPE;
+#ifndef  DEBUG_EXCHANGE
+    project_req_add_struct(a_stream,g_register_id,(void *)str_m);//跨插件交互,内存释放交由平台负责
+#else
+    info_project_req_free_t(thread_seq,str_m);
+#endif 
+
+    return PROT_STATE_DROPME;
+}
+int SSL_CAPTURE_INTI()
+{
+
+    printf("\nEntry SSL Capture\n");
+    g_register_id =project_producer_register(PROJECT_RESOURCE_NAME,PROJECT_VAL_TYPE_STRUCT,info_project_req_free_t);
+    if(g_register_id == -1)
+    {
+        printf("ssl_Info register error!\n");
+        return -1;
+    }
+    printf("Entry SSL Capture Success\n");
+    return 0;
+}
+
+void  SSL_CAPTURE_DESTROY()
+{
+}
+
